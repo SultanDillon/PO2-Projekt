@@ -8,18 +8,9 @@ import java.time.temporal.ChronoUnit;
 
 public class WypozyczalniaDVDFrame extends JFrame {
 
-    private Connection connection;
+    private static Connection connection;
 
     public WypozyczalniaDVDFrame() {
-        try {
-            connection = DriverManager.getConnection("jdbc:sqlite:wypozyczalnia_dvd.db");
-            initializeDatabase();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Błąd połączenia z bazą danych");
-            System.exit(1);
-        }
-
         setTitle("Wypożyczalnia DVD");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -112,7 +103,7 @@ public class WypozyczalniaDVDFrame extends JFrame {
         setVisible(true);
     }
 
-    private void initializeDatabase() {
+    private static void initializeDatabase() {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS dvd (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, reserved BOOLEAN DEFAULT 0, due_date DATE)");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, pesel TEXT UNIQUE)");
@@ -266,6 +257,15 @@ public class WypozyczalniaDVDFrame extends JFrame {
     }
 
     public static void main(String[] args) {
+        try {
+            connection = DriverManager.getConnection("jdbc:sqlite:wypozyczalnia_dvd.db");
+            initializeDatabase();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Błąd połączenia z bazą danych");
+            System.exit(1);
+        }
+
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
