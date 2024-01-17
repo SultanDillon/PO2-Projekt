@@ -105,7 +105,7 @@ public class WypozyczalniaDVDFrame extends JFrame {
 
     private static void initializeDatabase() {
         try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE TABLE IF NOT EXISTS dvd (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, reserved BOOLEAN DEFAULT 0, due_date DATE)");
+            statement.executeUpdate("CREATE TABLE IF NOT EXISTS dvd (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, reserved BOOLEAN DEFAULT 0, due_date DATE, client_id INTEGER)");
             statement.executeUpdate("CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, pesel TEXT UNIQUE)");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -181,8 +181,9 @@ public class WypozyczalniaDVDFrame extends JFrame {
             e.printStackTrace();
         }
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE dvd SET reserved = 1 WHERE title = ? AND reserved = 0")) {
-            preparedStatement.setString(1, title);
+        try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE dvd SET reserved = 1, due_date = DATE('now', '+7 days'), client_id = (SELECT id FROM clients WHERE pesel = ?) WHERE title = ? AND reserved = 0")) {
+            preparedStatement.setString(1, pesel);
+            preparedStatement.setString(2, title);
             int updatedRows = preparedStatement.executeUpdate();
             if (updatedRows > 0) {
                 JOptionPane.showMessageDialog(this, "Zarezerwowano DVD: " + title + " dla klienta: " + client);
@@ -220,17 +221,20 @@ public class WypozyczalniaDVDFrame extends JFrame {
 
     private void showAllDVDs() {
         try (Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM dvd");
+            ResultSet resultSet = statement.executeQuery("SELECT dvd.id, dvd.title, " +
+                    "CASE WHEN dvd.reserved = 1 THEN clients.name ELSE 'Nie' END AS client_name, " +
+                    "dvd.due_date " +
+                    "FROM dvd LEFT JOIN clients ON dvd.client_id = clients.id");
             StringBuilder result = new StringBuilder("Lista wszystkich DVD:\n");
 
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String title = resultSet.getString("title");
-                boolean reserved = resultSet.getBoolean("reserved");
+                String clientName = resultSet.getString("client_name");
                 String dueDate = resultSet.getString("due_date");
 
                 result.append("ID: ").append(id).append(", Tytuł: ").append(title)
-                        .append(", Zarezerwowane: ").append(reserved)
+                        .append(", Zarezerwowane: ").append(clientName == null || clientName.isEmpty() ? "Nie" : clientName)
                         .append(", Termin oddania: ").append(dueDate).append("\n");
             }
 
