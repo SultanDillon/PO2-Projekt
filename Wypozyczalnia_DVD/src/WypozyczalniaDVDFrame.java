@@ -5,6 +5,8 @@ import java.awt.event.ActionListener;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.awt.event.KeyEvent;
+import java.net.URL;
 
 public class WypozyczalniaDVDFrame extends JFrame {
 
@@ -18,6 +20,30 @@ public class WypozyczalniaDVDFrame extends JFrame {
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(7, 2));
 
+        // Logo programu
+        URL iconUrl = getClass().getResource("/obrazy/logo.png");
+        ImageIcon icon = new ImageIcon(iconUrl);
+        setIconImage(icon.getImage());
+
+        setSize(400, 300);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        try {
+            // Set the Nimbus look and feel
+            UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
+
+            // Customize additional properties for Nimbus (optional)
+            UIManager.put("nimbusBase", new Color(68, 181, 100));
+            UIManager.put("nimbusBlueGrey", new Color(68, 181, 100));
+            UIManager.put("control", new Color(68, 181, 100));
+
+            SwingUtilities.updateComponentTreeUI(this); // Update the UI to reflect the changes
+        } catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        JPanel myPanel = new JPanel();
+        myPanel.setLayout(new GridLayout(7, 2));
+
         JLabel titleLabel = new JLabel("Tytuł DVD:");
         JTextField titleField = new JTextField();
 
@@ -26,6 +52,38 @@ public class WypozyczalniaDVDFrame extends JFrame {
 
         JLabel peselLabel = new JLabel("PESEL klienta:");
         JTextField peselField = new JTextField();
+
+        peselField.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!(Character.isDigit(c) || (c == KeyEvent.VK_BACK_SPACE) || (c == KeyEvent.VK_DELETE))) {
+                    evt.consume();
+                }
+            }
+
+            public void keyReleased(KeyEvent e) {
+                JTextField textField = (JTextField) e.getSource();
+                String text = textField.getText();
+                if (text.length() > 11) {
+                    textField.setText(text.substring(0, 11));
+                }
+            }
+        });
+
+        peselField.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                JTextField textField = (JTextField) evt.getSource();
+                String pesel = textField.getText();
+                if (pesel.isEmpty()) {
+                    // Komunikat informacyjny, jeśli pole PESEL jest puste
+                    JOptionPane.showMessageDialog(null, "PESEL nie może być pusty", "Błąd", JOptionPane.ERROR_MESSAGE);
+                } else if (pesel.length() != 11) {
+                    // Komunikat informacyjny, jeśli PESEL ma mniej lub więcej niż 11 cyfr
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    textField.setText(""); // Wyczyść pole PESEL w przypadku błędu
+                }
+            }
+        });
 
         JButton rentButton = new JButton("Wypożycz");
         JButton returnButton = new JButton("Zwróć");
@@ -40,15 +98,34 @@ public class WypozyczalniaDVDFrame extends JFrame {
                 String title = titleField.getText();
                 String client = clientField.getText();
                 String pesel = peselField.getText();
+
+                // Sprawdź czy PESEL ma dokładnie 11 cyfr
+                if (pesel.isEmpty() || pesel.length() != 11) {
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                }
+
+                // Reszta kodu dla poprawnego PESEL
                 rentDVD(title, client, pesel);
             }
         });
+
 
         returnButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String title = titleField.getText();
-                returnDVD(title);
+                String client = clientField.getText();
+                String pesel = peselField.getText();
+
+                // Sprawdź czy PESEL ma dokładnie 11 cyfr
+                if (pesel.isEmpty() || pesel.length() != 11) {
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                }
+
+                // Reszta kodu dla poprawnego PESEL
+                rentDVD(title, client, pesel);
             }
         });
 
@@ -58,7 +135,15 @@ public class WypozyczalniaDVDFrame extends JFrame {
                 String title = titleField.getText();
                 String client = clientField.getText();
                 String pesel = peselField.getText();
-                reserveDVD(title, client, pesel);
+
+                // Sprawdź czy PESEL ma dokładnie 11 cyfr
+                if (pesel.isEmpty() || pesel.length() != 11) {
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                }
+
+                // Reszta kodu dla poprawnego PESEL
+                rentDVD(title, client, pesel);
             }
         });
 
@@ -66,7 +151,17 @@ public class WypozyczalniaDVDFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String title = titleField.getText();
-                addDVD(title);
+                String client = clientField.getText();
+                String pesel = peselField.getText();
+
+                // Sprawdź czy PESEL ma dokładnie 11 cyfr
+                if (pesel.isEmpty() || pesel.length() != 11) {
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                }
+
+                // Reszta kodu dla poprawnego PESEL
+                rentDVD(title, client, pesel);
             }
         });
 
@@ -74,7 +169,17 @@ public class WypozyczalniaDVDFrame extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String title = titleField.getText();
-                extendDueDate(title);
+                String client = clientField.getText();
+                String pesel = peselField.getText();
+
+                // Sprawdź czy PESEL ma dokładnie 11 cyfr
+                if (pesel.isEmpty() || pesel.length() != 11) {
+                    JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
+                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                }
+
+                // Reszta kodu dla poprawnego PESEL
+                rentDVD(title, client, pesel);
             }
         });
 
@@ -84,7 +189,6 @@ public class WypozyczalniaDVDFrame extends JFrame {
                 showAllDVDs();
             }
         });
-
         panel.add(titleLabel);
         panel.add(titleField);
         panel.add(clientLabel);
