@@ -6,43 +6,41 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.awt.event.KeyEvent;
-import java.net.URL;
 
 public class WypozyczalniaDVDFrame extends JFrame {
 
     private static Connection connection;
 
     public WypozyczalniaDVDFrame() {
+        try {
+            connection = DriverManager.getConnection("jdbc:sqlite:wypozyczalnia_dvd.db");
+            initializeDatabase();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Błąd połączenia z bazą danych");
+            System.exit(1);
+        }
+
         setTitle("Wypożyczalnia DVD");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(7, 2));
-
-        // Logo programu
-        URL iconUrl = getClass().getResource("/obrazy/logo.png");
-        ImageIcon icon = new ImageIcon(iconUrl);
-        setIconImage(icon.getImage());
-
-        setSize(400, 300);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         try {
-            // Set the Nimbus look and feel
+            // Ustawienia wyglądu Nimbus
             UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
 
-            // Customize additional properties for Nimbus (optional)
             UIManager.put("nimbusBase", new Color(68, 181, 100));
             UIManager.put("nimbusBlueGrey", new Color(68, 181, 100));
             UIManager.put("control", new Color(68, 181, 100));
 
-            SwingUtilities.updateComponentTreeUI(this); // Update the UI to reflect the changes
-        } catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (UnsupportedLookAndFeelException | ClassNotFoundException | InstantiationException |
+                 IllegalAccessException e) {
             e.printStackTrace();
         }
-        JPanel myPanel = new JPanel();
-        myPanel.setLayout(new GridLayout(7, 2));
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new GridLayout(7, 2));
 
         JLabel titleLabel = new JLabel("Tytuł DVD:");
         JTextField titleField = new JTextField();
@@ -75,12 +73,10 @@ public class WypozyczalniaDVDFrame extends JFrame {
                 JTextField textField = (JTextField) evt.getSource();
                 String pesel = textField.getText();
                 if (pesel.isEmpty()) {
-                    // Komunikat informacyjny, jeśli pole PESEL jest puste
                     JOptionPane.showMessageDialog(null, "PESEL nie może być pusty", "Błąd", JOptionPane.ERROR_MESSAGE);
                 } else if (pesel.length() != 11) {
-                    // Komunikat informacyjny, jeśli PESEL ma mniej lub więcej niż 11 cyfr
                     JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
-                    textField.setText(""); // Wyczyść pole PESEL w przypadku błędu
+                    textField.setText("");
                 }
             }
         });
@@ -95,18 +91,28 @@ public class WypozyczalniaDVDFrame extends JFrame {
         extendButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                System.out.println("Przycisk 'Przedłuż termin oddania' został naciśnięty.");
                 String title = titleField.getText();
                 String client = clientField.getText();
                 String pesel = peselField.getText();
 
-                // Sprawdź czy PESEL ma dokładnie 11 cyfr
                 if (pesel.isEmpty() || pesel.length() != 11) {
                     JOptionPane.showMessageDialog(null, "PESEL powinien mieć dokładnie 11 cyfr", "Błąd", JOptionPane.ERROR_MESSAGE);
-                    return; // Przerwij operację, jeśli PESEL jest nieprawidłowy
+                    return;
                 }
 
-                // Reszta kodu dla poprawnego PESEL
                 rentDVD(title, client, pesel);
+            }
+        });
+
+        addButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String newDVDTitle = JOptionPane.showInputDialog("Podaj tytuł nowego DVD:");
+                if (newDVDTitle != null && !newDVDTitle.isEmpty()) {
+                    addDVD(newDVDTitle);
+                    showAllDVDs(); // Refresh the displayed DVD list after adding a new DVD
+                }
             }
         });
 
@@ -116,6 +122,7 @@ public class WypozyczalniaDVDFrame extends JFrame {
                 showAllDVDs();
             }
         });
+
         panel.add(titleLabel);
         panel.add(titleField);
         panel.add(clientLabel);
@@ -130,7 +137,6 @@ public class WypozyczalniaDVDFrame extends JFrame {
         panel.add(showAllButton);
 
         add(panel);
-
         setVisible(true);
     }
 
@@ -142,6 +148,38 @@ public class WypozyczalniaDVDFrame extends JFrame {
             e.printStackTrace();
         }
     }
+
+    private void showAllDVDs() {
+        try (Statement statement = connection.createStatement()) {
+            ResultSet resultSet = statement.executeQuery("SELECT dvd.id, dvd.title, " +
+                    "CASE WHEN dvd.reserved = 1 THEN clients.name ELSE 'Nie' END AS client_name, " +
+                    "dvd.due_date " +
+                    "FROM dvd LEFT JOIN clients ON dvd.client_id = clients.id");
+            StringBuilder result = new StringBuilder("Lista wszystkich DVD:\n");
+
+            while (resultSet.next()) {
+                int id = resultSet.getInt("id");
+                String title = resultSet.getString("title");
+                String clientName = resultSet.getString("client_name");
+                String dueDate = resultSet.getString("due_date");
+
+                result.append("ID: ").append(id).append(", Tytuł: ").append(title)
+                        .append(", Zarezerwowane: ").append(clientName == null || clientName.isEmpty() ? "Nie" : clientName)
+                        .append(", Termin oddania: ").append(dueDate).append("\n");
+            }
+
+            if (result.length() > 20) { // Adjust this threshold based on your data
+                JOptionPane.showMessageDialog(this, result.toString());
+            } else {
+                JOptionPane.showMessageDialog(this, "Brak dostępnych DVD");
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Błąd podczas pobierania listy DVD");
+        }
+    }
+
+
 
     private void rentDVD(String title, String client, String pesel) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("INSERT OR IGNORE INTO clients (name, pesel) VALUES (?, ?)")) {
@@ -164,6 +202,8 @@ public class WypozyczalniaDVDFrame extends JFrame {
             e.printStackTrace();
         }
     }
+
+    // Pozostałe metody
 
     private void returnDVD(String title) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("UPDATE dvd SET reserved = 0, due_date = NULL WHERE title = ? AND reserved = 1")) {
@@ -250,32 +290,6 @@ public class WypozyczalniaDVDFrame extends JFrame {
         }
     }
 
-    private void showAllDVDs() {
-        try (Statement statement = connection.createStatement()) {
-            ResultSet resultSet = statement.executeQuery("SELECT dvd.id, dvd.title, " +
-                    "CASE WHEN dvd.reserved = 1 THEN clients.name ELSE 'Nie' END AS client_name, " +
-                    "dvd.due_date " +
-                    "FROM dvd LEFT JOIN clients ON dvd.client_id = clients.id");
-            StringBuilder result = new StringBuilder("Lista wszystkich DVD:\n");
-
-            while (resultSet.next()) {
-                int id = resultSet.getInt("id");
-                String title = resultSet.getString("title");
-                String clientName = resultSet.getString("client_name");
-                String dueDate = resultSet.getString("due_date");
-
-                result.append("ID: ").append(id).append(", Tytuł: ").append(title)
-                        .append(", Zarezerwowane: ").append(clientName == null || clientName.isEmpty() ? "Nie" : clientName)
-                        .append(", Termin oddania: ").append(dueDate).append("\n");
-            }
-
-            JOptionPane.showMessageDialog(this, result.toString());
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Błąd podczas pobierania listy DVD");
-        }
-    }
-
     private String getDueDate(String title) {
         try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT due_date FROM dvd WHERE title = ? AND reserved = 1")) {
             preparedStatement.setString(1, title);
@@ -291,21 +305,30 @@ public class WypozyczalniaDVDFrame extends JFrame {
         }
     }
 
+
     public static void main(String[] args) {
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:wypozyczalnia_dvd.db");
             initializeDatabase();
+
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    new WypozyczalniaDVDFrame();
+                }
+            });
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Błąd połączenia z bazą danych");
             System.exit(1);
-        }
-
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new WypozyczalniaDVDFrame();
+        } finally {
+            try {
+                if (connection != null) {
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-        });
+        }
     }
 }

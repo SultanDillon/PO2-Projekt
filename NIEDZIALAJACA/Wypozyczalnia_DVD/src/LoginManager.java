@@ -70,6 +70,7 @@ public class LoginManager extends JFrame {
         if (authenticate(username, password)) {
             successfulLogin = true;
             dispose();
+            new WypozyczalniaDVDFrame();  // Otwórz WypozyczalniaDVDFrame po pomyślnym zalogowaniu
         } else {
             JOptionPane.showMessageDialog(null, "Nieprawidłowy login lub hasło", "Błąd logowania", JOptionPane.ERROR_MESSAGE);
             userField.setText("");
